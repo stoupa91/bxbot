@@ -1,6 +1,6 @@
 # BX-bot
 
-[![Build Status](https://travis-ci.org/gazbert/bxbot.svg?branch=master)](https://travis-ci.org/gazbert/bxbot)
+[![Build Status](https://travis-ci.org/gazbert/bxbot.svg?branch=bxbot-coinfloor)](https://travis-ci.org/gazbert/bxbot)
 
 ## What is BX-bot?
 
