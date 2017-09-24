@@ -21,14 +21,14 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.gazbert.bxbot.rest.api;
+package com.gazbert.bxbot.rest.api.config;
 
 import com.gazbert.bxbot.core.engine.TradingEngine;
 import com.gazbert.bxbot.core.mail.EmailAlerter;
 import com.gazbert.bxbot.domain.strategy.StrategyConfig;
+import com.gazbert.bxbot.rest.api.AbstractConfigControllerTest;
 import com.gazbert.bxbot.services.StrategyConfigService;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,6 +36,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -80,10 +82,11 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @MockBean
     StrategyConfigService strategyConfigService;
 
+    // Need this even though not used in the test directly because Spring loads it on startup...
     @MockBean
     private TradingEngine tradingEngine;
 
-    // Need this even though not used in the test directly because Spring loads the Email Alerts config on startup...
+    // Need this even though not used in the test directly because Spring loads it on startup...
     @MockBean
     private EmailAlerter emailAlerter;
 
@@ -95,10 +98,9 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testGetAllStrategyConfig() throws Exception {
 
-        given(strategyConfigService.findAllStrategies()).willReturn(allTheStrategiesConfig());
-        tradingEngine.start();
+        given(strategyConfigService.getAllStrategyConfig()).willReturn(allTheStrategiesConfig());
 
-        mockMvc.perform(get("/api/config/strategy/")
+        mockMvc.perform(get("/api/config/strategies/")
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, VALID_USER_PASSWORD)))
                 .andDo(print())
                 .andExpect(status().isOk())
@@ -122,7 +124,7 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testGetAllStrategyConfigWhenUnauthorizedWithMissingCredentials() throws Exception {
 
-        mockMvc.perform(get("/api/config/strategy")
+        mockMvc.perform(get("/api/config/strategies")
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
@@ -130,18 +132,18 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testGetAllStrategyConfigWhenUnauthorizedWithInvalidCredentials() throws Exception {
 
-        mockMvc.perform(get("/api/config/strategy")
+        mockMvc.perform(get("/api/config/strategies")
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, INVALID_USER_PASSWORD))
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    public void testGetStrategyConfigById() throws Exception {
+    public void testGetStrategyConfig() throws Exception {
 
-        given(strategyConfigService.findById(STRAT_1_ID)).willReturn(someStrategyConfig());
+        given(strategyConfigService.getStrategyConfig(STRAT_1_ID)).willReturn(someStrategyConfig());
 
-        mockMvc.perform(get("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(get("/api/config/strategies/" + STRAT_1_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, VALID_USER_PASSWORD)))
                 .andDo(print())
                 .andExpect(status().isOk())
@@ -158,7 +160,7 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testGetStrategyConfigByIdWhenUnauthorizedWithMissingCredentials() throws Exception {
 
-        mockMvc.perform(get("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(get("/api/config/strategies/" + STRAT_1_ID)
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
@@ -166,7 +168,7 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testGetStrategyConfigByIdWhenUnauthorizedWithInvalidCredentials() throws Exception {
 
-        mockMvc.perform(get("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(get("/api/config/strategies/" + STRAT_1_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, INVALID_USER_PASSWORD))
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
@@ -175,9 +177,9 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testGetStrategyConfigByIdWhenNotRecognized() throws Exception {
 
-        given(strategyConfigService.findById(UNKNOWN_STRAT_ID)).willReturn(emptyStrategyConfig());
+        given(strategyConfigService.getStrategyConfig(UNKNOWN_STRAT_ID)).willReturn(emptyStrategyConfig());
 
-        mockMvc.perform(get("/api/config/strategy/" + UNKNOWN_STRAT_ID)
+        mockMvc.perform(get("/api/config/strategies/" + UNKNOWN_STRAT_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, VALID_USER_PASSWORD))
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
@@ -186,19 +188,23 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testUpdateStrategyConfig() throws Exception {
 
-        given(strategyConfigService.updateStrategy(someStrategyConfig())).willReturn(someStrategyConfig());
+        given(strategyConfigService.updateStrategyConfig(someStrategyConfig())).willReturn(someStrategyConfig());
 
-        mockMvc.perform(put("/api/config/strategy/" + STRAT_1_ID)
+        final MvcResult result = mockMvc.perform(put("/api/config/strategies/" + STRAT_1_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, VALID_USER_PASSWORD))
                 .contentType(CONTENT_TYPE)
                 .content(jsonify(someStrategyConfig())))
-                .andExpect(status().isNoContent());
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andReturn();
+
+        assertEquals(jsonify(someStrategyConfig()), result.getResponse().getContentAsString());
     }
 
     @Test
     public void testUpdateStrategyConfigWhenUnauthorizedWithMissingCredentials() throws Exception {
 
-        mockMvc.perform(put("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(put("/api/config/strategies/" + STRAT_1_ID)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(CONTENT_TYPE)
                 .content(jsonify(someStrategyConfig())))
@@ -208,7 +214,7 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testUpdateStrategyConfigWhenUnauthorizedWithInvalidCredentials() throws Exception {
 
-        mockMvc.perform(put("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(put("/api/config/strategies/" + STRAT_1_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, INVALID_USER_PASSWORD))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(CONTENT_TYPE)
@@ -219,9 +225,9 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testUpdateStrategyConfigWhenIdNotRecognized() throws Exception {
 
-        given(strategyConfigService.updateStrategy(unrecognizedStrategyConfig())).willReturn(emptyStrategyConfig());
+        given(strategyConfigService.updateStrategyConfig(unrecognizedStrategyConfig())).willReturn(emptyStrategyConfig());
 
-        mockMvc.perform(put("/api/config/strategy/" + UNKNOWN_STRAT_ID)
+        mockMvc.perform(put("/api/config/strategies/" + UNKNOWN_STRAT_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, VALID_USER_PASSWORD))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(CONTENT_TYPE)
@@ -232,7 +238,7 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testUpdateStrategyConfigWhenIdIsMissing() throws Exception {
 
-        mockMvc.perform(put("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(put("/api/config/strategies/" + STRAT_1_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, VALID_USER_PASSWORD))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(CONTENT_TYPE)
@@ -243,9 +249,9 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testDeleteStrategyConfig() throws Exception {
 
-        given(strategyConfigService.deleteStrategyById(STRAT_1_ID)).willReturn(someStrategyConfig());
+        given(strategyConfigService.deleteStrategyConfig(STRAT_1_ID)).willReturn(someStrategyConfig());
 
-        mockMvc.perform(delete("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(delete("/api/config/strategies/" + STRAT_1_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, VALID_USER_PASSWORD)))
                 .andExpect(status().isNoContent());
     }
@@ -253,7 +259,7 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testDeleteStrategyConfigWhenUnauthorizedWithMissingCredentials() throws Exception {
 
-        mockMvc.perform(delete("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(delete("/api/config/strategies/" + STRAT_1_ID)
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
@@ -261,7 +267,7 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testDeleteStrategyConfigWhenUnauthorizedWithInvalidCredentials() throws Exception {
 
-        mockMvc.perform(delete("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(delete("/api/config/strategies/" + STRAT_1_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, INVALID_USER_PASSWORD))
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
@@ -270,9 +276,9 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testDeleteStrategyConfigWhenIdNotRecognized() throws Exception {
 
-        given(strategyConfigService.deleteStrategyById(UNKNOWN_STRAT_ID)).willReturn(emptyStrategyConfig());
+        given(strategyConfigService.deleteStrategyConfig(UNKNOWN_STRAT_ID)).willReturn(emptyStrategyConfig());
 
-        mockMvc.perform(delete("/api/config/strategy/" + UNKNOWN_STRAT_ID)
+        mockMvc.perform(delete("/api/config/strategies/" + UNKNOWN_STRAT_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, VALID_USER_PASSWORD))
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
@@ -281,19 +287,23 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testCreateStrategyConfig() throws Exception {
 
-        given(strategyConfigService.createStrategy(someStrategyConfig())).willReturn(someStrategyConfig());
+        given(strategyConfigService.createStrategyConfig(someStrategyConfig())).willReturn(someStrategyConfig());
 
-        mockMvc.perform(post("/api/config/strategy/" + STRAT_1_ID)
+        final MvcResult result = mockMvc.perform(post("/api/config/strategies/" + STRAT_1_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, VALID_USER_PASSWORD))
                 .contentType(CONTENT_TYPE)
                 .content(jsonify(someStrategyConfig())))
-                .andExpect(status().isCreated());
+                .andDo(print())
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        assertEquals(jsonify(someStrategyConfig()), result.getResponse().getContentAsString());
     }
 
     @Test
     public void testCreateStrategyConfigWhenUnauthorizedWithMissingCredentials() throws Exception {
 
-        mockMvc.perform(post("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(post("/api/config/strategies/" + STRAT_1_ID)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(CONTENT_TYPE)
                 .content(jsonify(someStrategyConfig())))
@@ -303,7 +313,7 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testCreateStrategyConfigWhenUnauthorizedWithInvalidCredentials() throws Exception {
 
-        mockMvc.perform(post("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(post("/api/config/strategies/" + STRAT_1_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, INVALID_USER_PASSWORD))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(CONTENT_TYPE)
@@ -314,9 +324,9 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testCreateStrategyConfigWhenIdAlreadyExists() throws Exception {
 
-        given(strategyConfigService.createStrategy(someStrategyConfig())).willReturn(emptyStrategyConfig());
+        given(strategyConfigService.createStrategyConfig(someStrategyConfig())).willReturn(emptyStrategyConfig());
 
-        mockMvc.perform(post("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(post("/api/config/strategies/" + STRAT_1_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, VALID_USER_PASSWORD))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(CONTENT_TYPE)
@@ -327,7 +337,7 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
     @Test
     public void testCreateStrategyConfigWhenIdIsMissing() throws Exception {
 
-        mockMvc.perform(post("/api/config/strategy/" + STRAT_1_ID)
+        mockMvc.perform(post("/api/config/strategies/" + STRAT_1_ID)
                 .header("Authorization", buildAuthorizationHeaderValue(VALID_USER_LOGINID, VALID_USER_PASSWORD))
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(CONTENT_TYPE)
@@ -376,7 +386,7 @@ public class TestStrategyConfigController extends AbstractConfigControllerTest {
         final Map<String, String> configItems = new HashMap<>();
         configItems.put(BUY_PRICE_CONFIG_ITEM_KEY, BUY_PRICE_CONFIG_ITEM_VALUE);
         configItems.put(AMOUNT_TO_BUY_CONFIG_ITEM_KEY, AMOUNT_TO_BUY_CONFIG_ITEM_VALUE);
-        return new StrategyConfig("unknown-id", STRAT_1_NAME, STRAT_1_DESCRIPTION, STRAT_1_CLASSNAME, configItems);
+        return new StrategyConfig(UNKNOWN_STRAT_ID, STRAT_1_NAME, STRAT_1_DESCRIPTION, STRAT_1_CLASSNAME, configItems);
     }
 
     private static StrategyConfig emptyStrategyConfig() {

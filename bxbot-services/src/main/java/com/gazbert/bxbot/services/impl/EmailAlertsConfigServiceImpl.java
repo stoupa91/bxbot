@@ -50,18 +50,17 @@ public class EmailAlertsConfigServiceImpl implements EmailAlertsConfigService {
 
     @Autowired
     public EmailAlertsConfigServiceImpl(EmailAlertsConfigRepository emailAlertsConfigRepository) {
-        Assert.notNull(emailAlertsConfigRepository, "emailAlertsConfigRepository dependency cannot be null!");
         this.emailAlertsConfigRepository = emailAlertsConfigRepository;
     }
 
     @Override
-    public EmailAlertsConfig getConfig() {
-        return emailAlertsConfigRepository.getConfig();
+    public EmailAlertsConfig getEmailAlertsConfig() {
+        return emailAlertsConfigRepository.get();
     }
 
     @Override
-    public void updateConfig(EmailAlertsConfig config) {
-        LOG.info(() -> "About to update: " + config);
-        emailAlertsConfigRepository.updateConfig(config);
+    public EmailAlertsConfig updateEmailAlertsConfig(EmailAlertsConfig config) {
+        LOG.info(() -> "About to update Email Alerts config: " + config);
+        return emailAlertsConfigRepository.save(config);
     }
 }

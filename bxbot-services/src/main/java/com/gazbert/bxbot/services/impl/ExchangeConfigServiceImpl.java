@@ -50,18 +50,17 @@ public class ExchangeConfigServiceImpl implements ExchangeConfigService {
 
     @Autowired
     public ExchangeConfigServiceImpl(ExchangeConfigRepository exchangeConfigRepository) {
-        Assert.notNull(exchangeConfigRepository, "exchangeConfigRepository dependency cannot be null!");
         this.exchangeConfigRepository = exchangeConfigRepository;
     }
 
     @Override
-    public ExchangeConfig getConfig() {
-        return exchangeConfigRepository.getConfig();
+    public ExchangeConfig getExchangeConfig() {
+        return exchangeConfigRepository.get();
     }
 
     @Override
-    public void updateConfig(ExchangeConfig config) {
-        LOG.info(() -> "About to update: " + config);
-        exchangeConfigRepository.updateConfig(config);
+    public ExchangeConfig updateExchangeConfig(ExchangeConfig config) {
+        LOG.info(() -> "About to update Exchange config: " + config);
+        return exchangeConfigRepository.save(config);
     }
 }
